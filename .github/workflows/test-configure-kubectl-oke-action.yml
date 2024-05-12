@@ -32,7 +32,7 @@ jobs:
       - name: Check that the correct kubectl version is active
         run: |
           which kubectl
-          kubectl version --short
+          kubectl version
 
       - name: Get pods using Kubectl
         run: kubectl get pods -A
