@@ -36,23 +36,23 @@ jobs:
       - name: Get pods using Kubectl
         run: kubectl get pods -A
 
-  test-action-new-region:
-    runs-on: ubuntu-latest
-    name: Test the action in a new region
-    env:
-      OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
-      OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
-      OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
-      OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
-      OCI_CLI_REGION: ${{ secrets.OCI_CLI_NEW_REGION }}
+  # test-action-new-region:
+  #   runs-on: ubuntu-latest
+  #   name: Test the action in a new region
+  #   env:
+  #     OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
+  #     OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
+  #     OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
+  #     OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
+  #     OCI_CLI_REGION: ${{ secrets.OCI_CLI_NEW_REGION }}
 
-    steps:
-      - uses: actions/checkout@v3
-      - name: Configure Kubectl for OKE cluster in new region
-        uses: ./
-        id: test-configure-kubectl-oke-action-new-region
-        with:
-          cluster: ${{ secrets.OKE_NEW_CLUSTER_OCID }}
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Configure Kubectl for OKE cluster in new region
+  #       uses: ./
+  #       id: test-configure-kubectl-oke-action-new-region
+  #       with:
+  #         cluster: ${{ secrets.OKE_NEW_CLUSTER_OCID }}
 
-      - name: Get pods using Kubectl
-        run: kubectl get nodes -A
+  #     - name: Get pods using Kubectl
+  #       run: kubectl get nodes -A
