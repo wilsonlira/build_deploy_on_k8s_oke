@@ -94,4 +94,3 @@ Released under the Universal Permissive License v1.0 as shown at <https://oss.or
 [4]:  /CONTRIBUTING.md
 [5]:  ./SECURITY.md
 [6]: https://docs.github.com/en/actions/hosting-your-own-runners
-..
