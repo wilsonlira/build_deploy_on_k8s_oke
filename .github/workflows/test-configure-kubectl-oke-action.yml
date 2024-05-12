@@ -13,6 +13,7 @@ jobs:
   test-action-home-region:
     runs-on: ubuntu-latest
     name: Test the action in the tenancy home region
+    environment: OCI_Secrets
     env:
       OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
       OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
