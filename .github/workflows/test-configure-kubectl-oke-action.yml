@@ -26,7 +26,7 @@ jobs:
         uses: oracle-actions/configure-kubectl-oke@v1.5.0
         id: test-configure-kubectl-oke-action
         env:
-          cluster: ${{ secrets.OKE_CLUSTER_OCID }}
+          cluster: ${{ OCI_Secrets.secrets.OKE_CLUSTER_OCID }}
           RegionId: ${{ vars.OCI_CLI_REGION }}
 
       - name: Run Kubectl
