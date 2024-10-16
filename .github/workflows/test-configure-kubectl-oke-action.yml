@@ -18,7 +18,7 @@ jobs:
       OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
       OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
       OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
-      OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }}
+      OCI_CLI_REGION: ${{ region.OCI_CLI_REGION }}
 
     steps:
       - name: Configure Kubectl
@@ -26,7 +26,7 @@ jobs:
         id: test-configure-kubectl-oke-action
         with:
           cluster: ${{ secrets.OKE_CLUSTER_OCID }}
-          RegionId: ${{ secrets.OCI_CLI_REGION }}
+          RegionId: ${{ region.OCI_CLI_REGION }}
 
       - name: Run Kubectl
         run: kubectl get nodes -A
