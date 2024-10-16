@@ -20,13 +20,14 @@ jobs:
       OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
       OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
       OCI_CLI_REGION: "${{ vars.OCI_CLI_REGION }}" #"sa-saopaulo-1"
+      OKE_CLUSTER_OCID: ${{ secrets.OKE_CLUSTER_OCID }}
 
     steps:
       - name: Configure Kubectl
         uses: oracle-actions/configure-kubectl-oke@v1.5.0
         id: test-configure-kubectl-oke-action
-        env:
-          cluster: ${{ OCI_Secrets.secrets.OKE_CLUSTER_OCID }}
+        with:
+          cluster: ${{ secrets.OKE_CLUSTER_OCID }}
           RegionId: ${{ vars.OCI_CLI_REGION }}
 
       - name: Run Kubectl
