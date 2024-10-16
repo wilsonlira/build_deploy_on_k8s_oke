@@ -11,6 +11,7 @@ on:
 
 jobs:
   install-kubectl:
+    environment: OCI_Secrets
     runs-on: ubuntu-latest
     name: Install Kubectl for OKE
     env:
