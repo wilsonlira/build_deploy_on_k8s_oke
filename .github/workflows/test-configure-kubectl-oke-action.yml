@@ -10,50 +10,22 @@ on:
   workflow_dispatch:
 
 jobs:
-  test-action-home-region:
+  install-kubectl:
     runs-on: ubuntu-latest
-    name: Test the action in the tenancy home region
-    environment: OCI_Secrets
+    name: Install Kubectl for OKE
     env:
       OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
       OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
       OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
       OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
       OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }}
-    steps:
-      - uses: actions/checkout@v3
 
-      - name: Configure Kubectl for OKE cluster in home region
-        uses: ./
+    steps:
+      - name: Configure Kubectl
+        uses: oracle-actions/configure-kubectl-oke@v1.3.2
         id: test-configure-kubectl-oke-action
         with:
-          cluster: ${{ secrets.OKE_CLUSTER_ID }}
+          cluster: ${{ secrets.OKE_CLUSTER_OCID }}
 
-      # - name: Check that the correct kubectl version is active
-      #   run: |
-      #     which kubectl
-      #     kubectl version
-
-      - name: Get pods using Kubectl
-        run: kubectl get pods -A
-
-  # test-action-new-region:
-  #   runs-on: ubuntu-latest
-  #   name: Test the action in a new region
-  #   env:
-  #     OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
-  #     OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
-  #     OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
-  #     OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
-  #     OCI_CLI_REGION: ${{ secrets.OCI_CLI_NEW_REGION }}
-
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - name: Configure Kubectl for OKE cluster in new region
-  #       uses: ./
-  #       id: test-configure-kubectl-oke-action-new-region
-  #       with:
-  #         cluster: ${{ secrets.OKE_NEW_CLUSTER_OCID }}
-
-  #     - name: Get pods using Kubectl
-  #       run: kubectl get nodes -A
+      - name: Run Kubectl
+        run: kubectl get nodes -A
