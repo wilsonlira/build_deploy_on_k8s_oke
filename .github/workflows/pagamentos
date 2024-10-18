@@ -1,0 +1,106 @@
+name: Build and Push Docker Images
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'pagamentos/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'pagamentos/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    environment: OCI_Secrets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+      - name: Generate version for pagamentos with semver logic
+        id: version_pagamentos
+        run: |
+          cd pagamentos
+          # Se o arquivo VERSION não existir, cria com a versão inicial
+          if [ ! -f VERSION ]; then
+            echo "0.1.0" > VERSION
+          fi
+          # Lê a versão atual e separa os números
+          VERSION=$(cat VERSION)
+          IFS='.' read -r major minor patch <<< "$VERSION"
+          
+          # Incrementa o patch automaticamente
+          patch=$((patch + 1))
+          NEW_VERSION="$major.$minor.$patch"
+          
+          echo "New version for pagamentos: $NEW_VERSION"
+          echo "$NEW_VERSION" > VERSION
+          echo "PAGAMENTOS_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
+
+      - name: Commit new version for pagamentos
+        run: |
+          cd pagamentos
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add VERSION
+          git commit -m "Bump pagamentos version to ${{ env.PAGAMENTOS_VERSION }}" || echo "No changes to commit"
+          git push origin main --force
+
+      - name: Build and push Docker image for pagamentos
+        run: |
+          docker buildx create --use
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            -t ${{ secrets.DOCKER_HUB_USERNAME }}/pagamentos:${{ env.PAGAMENTOS_VERSION }} \
+            -t ${{ secrets.DOCKER_HUB_USERNAME }}/pagamentos:latest \
+            --push pagamentos/
+
+      - name: Install Snyk CLI
+        run: |
+          npm install -g snyk
+
+      - name: Authenticate Snyk
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk auth $SNYK_TOKEN
+
+      - name: Scan Docker image for vulnerabilities using Snyk for pagamentos
+        run: |
+          snyk container test ${{ secrets.DOCKER_HUB_USERNAME }}/pagamentos:${{ env.PAGAMENTOS_VERSION }} || true
+
+  install-kubectl:
+    environment: OCI_Secrets
+    runs-on: ubuntu-latest
+    name: Install Kubectl for OKE
+    env:
+      OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
+      OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
+      OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
+      OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
+      OCI_CLI_REGION: "${{ vars.OCI_CLI_REGION }}"
+
+    steps:
+      - name: Configure Kubectl
+        uses: oracle-actions/configure-kubectl-oke@v1.5.0
+        id: test-configure-kubectl-oke-action
+        with:
+          cluster: ${{ secrets.OKE_CLUSTER_OCID }}
+
+      - name: Run Kubectl
+        run: kubectl get nodes -A
