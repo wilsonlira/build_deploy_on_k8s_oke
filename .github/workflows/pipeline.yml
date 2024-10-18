@@ -19,10 +19,9 @@ permissions:
   contents: write
 
 jobs:
-  build-gateway:
+  build:
     environment: OCI_Secrets
     runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.message, 'gateway') || contains(github.event.pull_request.title, 'gateway')
 
     steps:
       - name: Checkout code
@@ -38,97 +37,76 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
       - name: Generate version for gateway with semver logic
-        id: version
+        id: version_gateway
         run: |
-          if [ ! -f gateway/VERSION ]; then
-            echo "0.1.0" > gateway/VERSION
+          cd gateway
+          # Se o arquivo VERSION não existir, cria com a versão inicial
+          if [ ! -f VERSION ]; then
+            echo "0.1.0" > VERSION
           fi
-
-          VERSION=$(cat gateway/VERSION)
+          # Lê a versão atual e separa os números
+          VERSION=$(cat VERSION)
           IFS='.' read -r major minor patch <<< "$VERSION"
+          
+          # Incrementa o patch automaticamente
           patch=$((patch + 1))
           NEW_VERSION="$major.$minor.$patch"
           
-          echo "New version: $NEW_VERSION"
-          echo "$NEW_VERSION" > gateway/VERSION
-          echo "VERSION=${NEW_VERSION}" >> $GITHUB_ENV
+          echo "New version for gateway: $NEW_VERSION"
+          echo "$NEW_VERSION" > VERSION
+          echo "GATEWAY_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
 
       - name: Commit new version for gateway
         run: |
+          cd gateway
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add gateway/VERSION
-          git commit -m "Bump gateway version to ${{ env.VERSION }}" || echo "No changes to commit"
+          git add VERSION
+          git commit -m "Bump gateway version to ${{ env.GATEWAY_VERSION }}" || echo "No changes to commit"
           git push origin main --force
 
       - name: Build and push Docker image for gateway
         run: |
           docker buildx create --use
           docker buildx build --platform linux/amd64,linux/arm64 \
-            -t ${{ secrets.DOCKER_HUB_USERNAME }}/gateway:${{ env.VERSION }} \
+            -t ${{ secrets.DOCKER_HUB_USERNAME }}/gateway:${{ env.GATEWAY_VERSION }} \
             -t ${{ secrets.DOCKER_HUB_USERNAME }}/gateway:latest \
             --push gateway/
 
-      - name: Install Snyk CLI
-        run: |
-          npm install -g snyk
-
-      - name: Authenticate Snyk
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: snyk auth $SNYK_TOKEN
-
-      - name: Scan Docker image for vulnerabilities using Snyk
-        run: |
-          snyk container test ${{ secrets.DOCKER_HUB_USERNAME }}/gateway:${{ env.VERSION }} || true
-
-  build-pagamentos:
-    environment: OCI_Secrets
-    runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.message, 'pagamentos') || contains(github.event.pull_request.title, 'pagamentos')
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
-
       - name: Generate version for pagamentos with semver logic
-        id: version
+        id: version_pagamentos
         run: |
-          if [ ! -f pagamentos/VERSION ]; then
-            echo "0.1.0" > pagamentos/VERSION
+          cd pagamentos
+          # Se o arquivo VERSION não existir, cria com a versão inicial
+          if [ ! -f VERSION ]; then
+            echo "0.1.0" > VERSION
           fi
-
-          VERSION=$(cat pagamentos/VERSION)
+          # Lê a versão atual e separa os números
+          VERSION=$(cat VERSION)
           IFS='.' read -r major minor patch <<< "$VERSION"
+          
+          # Incrementa o patch automaticamente
           patch=$((patch + 1))
           NEW_VERSION="$major.$minor.$patch"
           
-          echo "New version: $NEW_VERSION"
-          echo "$NEW_VERSION" > pagamentos/VERSION
-          echo "VERSION=${NEW_VERSION}" >> $GITHUB_ENV
+          echo "New version for pagamentos: $NEW_VERSION"
+          echo "$NEW_VERSION" > VERSION
+          echo "PAGAMENTOS_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
 
       - name: Commit new version for pagamentos
         run: |
+          cd pagamentos
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add pagamentos/VERSION
-          git commit -m "Bump pagamentos version to ${{ env.VERSION }}" || echo "No changes to commit"
+          git add VERSION
+          git commit -m "Bump pagamentos version to ${{ env.PAGAMENTOS_VERSION }}" || echo "No changes to commit"
           git push origin main --force
 
       - name: Build and push Docker image for pagamentos
         run: |
           docker buildx create --use
           docker buildx build --platform linux/amd64,linux/arm64 \
-            -t ${{ secrets.DOCKER_HUB_USERNAME }}/pagamentos:${{ env.VERSION }} \
+            -t ${{ secrets.DOCKER_HUB_USERNAME }}/pagamentos:${{ env.PAGAMENTOS_VERSION }} \
             -t ${{ secrets.DOCKER_HUB_USERNAME }}/pagamentos:latest \
             --push pagamentos/
 
@@ -141,9 +119,13 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: snyk auth $SNYK_TOKEN
 
-      - name: Scan Docker image for vulnerabilities using Snyk
+      - name: Scan Docker image for vulnerabilities using Snyk for gateway
         run: |
-          snyk container test ${{ secrets.DOCKER_HUB_USERNAME }}/pagamentos:${{ env.VERSION }} || true
+          snyk container test ${{ secrets.DOCKER_HUB_USERNAME }}/gateway:${{ env.GATEWAY_VERSION }} || true
+
+      - name: Scan Docker image for vulnerabilities using Snyk for pagamentos
+        run: |
+          snyk container test ${{ secrets.DOCKER_HUB_USERNAME }}/pagamentos:${{ env.PAGAMENTOS_VERSION }} || true
 
   install-kubectl:
     environment: OCI_Secrets
