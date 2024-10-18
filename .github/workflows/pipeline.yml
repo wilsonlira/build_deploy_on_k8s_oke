@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # Garante permissão de escrita no repositório
+  contents: write
 
 jobs:
   build:
@@ -34,20 +34,16 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
-      - name: Get version from git tag
-        id: get_version
+      - name: Generate unique version (timestamp-based)
+        id: version
         run: |
-          # Usa o último tag semântico ou define uma versão inicial
-          VERSION=$(git describe --tags --abbrev=0 || echo "1.0.0")
-          echo "Current version: $VERSION"
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          # Gera um timestamp para a tag
+          TIMESTAMP=$(date +'%Y%m%d%H%M%S')
+          echo "Generated version: $TIMESTAMP"
+          echo "VERSION=${TIMESTAMP}" >> $GITHUB_ENV
 
-      - name: Build and push Docker image with version
+      - name: Build and push Docker image with unique version and latest
         run: |
-          if [ -z "${{ env.VERSION }}" ]; then
-            echo "VERSION not found, exiting."
-            exit 1
-          fi
           docker buildx create --use
           docker buildx build --platform linux/amd64,linux/arm64 \
             -t ${{ secrets.DOCKER_HUB_USERNAME }}/gateway:${{ env.VERSION }} \
@@ -76,7 +72,7 @@ jobs:
       OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
       OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
       OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
-      OCI_CLI_REGION: "${{ vars.OCI_CLI_REGION }}" 
+      OCI_CLI_REGION: "${{ vars.OCI_CLI_REGION }}"
 
     steps:
       - name: Configure Kubectl
