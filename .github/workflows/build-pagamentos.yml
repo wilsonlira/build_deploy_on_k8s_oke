@@ -1,16 +1,16 @@
-name: Build and Push Docker Images
+name: Pagamentos - Build and Push Docker Images
 
 on:
   pull_request:
     branches:
       - main
     paths:
-      - 'gateway/**'
+      - 'pagamentos/**'
   push:
     branches:
       - main
     paths:
-      - 'gateway/**'
+      - 'pagamentos/**'
   workflow_dispatch:
 
 permissions:
@@ -34,10 +34,10 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
-      - name: Generate version for gateway with semver logic
-        id: version_gateway
+      - name: Generate version for pagamentos with semver logic
+        id: version_pagamentos
         run: |
-          cd gateway
+          cd pagamentos
           # Se o arquivo VERSION não existir, cria com a versão inicial
           if [ ! -f VERSION ]; then
             echo "0.1.0" > VERSION
@@ -50,26 +50,26 @@ jobs:
           patch=$((patch + 1))
           NEW_VERSION="$major.$minor.$patch"
           
-          echo "New version for gateway: $NEW_VERSION"
+          echo "New version for pagamentos: $NEW_VERSION"
           echo "$NEW_VERSION" > VERSION
-          echo "GATEWAY_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
+          echo "PAGAMENTOS_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
 
-      - name: Commit new version for gateway
+      - name: Commit new version for pagamentos
         run: |
-          cd gateway
+          cd pagamentos
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add VERSION
-          git commit -m "Bump gateway version to ${{ env.GATEWAY_VERSION }}" || echo "No changes to commit"
+          git commit -m "Bump pagamentos version to ${{ env.PAGAMENTOS_VERSION }}" || echo "No changes to commit"
           git push origin main --force
 
-      - name: Build and push Docker image for gateway
+      - name: Build and push Docker image for pagamentos
         run: |
           docker buildx create --use
           docker buildx build --platform linux/amd64,linux/arm64 \
-            -t ${{ secrets.DOCKER_HUB_USERNAME }}/gateway:${{ env.GATEWAY_VERSION }} \
-            -t ${{ secrets.DOCKER_HUB_USERNAME }}/gateway:latest \
-            --push gateway/
+            -t ${{ secrets.DOCKER_HUB_USERNAME }}/pagamentos:${{ env.PAGAMENTOS_VERSION }} \
+            -t ${{ secrets.DOCKER_HUB_USERNAME }}/pagamentos:latest \
+            --push pagamentos/
 
       - name: Install Snyk CLI
         run: |
@@ -80,9 +80,9 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: snyk auth $SNYK_TOKEN
 
-      - name: Scan Docker image for vulnerabilities using Snyk for gateway
+      - name: Scan Docker image for vulnerabilities using Snyk for pagamentos
         run: |
-          snyk container test ${{ secrets.DOCKER_HUB_USERNAME }}/gateway:${{ env.GATEWAY_VERSION }} || true
+          snyk container test ${{ secrets.DOCKER_HUB_USERNAME }}/pagamentos:${{ env.PAGAMENTOS_VERSION }} || true
 
   install-kubectl:
     environment: OCI_Secrets

@@ -2,7 +2,7 @@ name: Deploy to OKE
 
 on:
   workflow_run:
-    workflows: ["Pagamentos - Build and Push Docker Images"]
+    workflows: ["Gateway - Build and Push Docker Images"]
     types:
       - completed
 
@@ -27,5 +27,5 @@ jobs:
 
       - name: Deploy to OKE
         run: |
-          kubectl set image deployment/pagamentos pagamentos=${{ secrets.DOCKER_HUB_USERNAME }}/pagamentos:latest
-          kubectl rollout status deployment/pagamentos
+          kubectl set image deployment/gateway gateway=${{ secrets.DOCKER_HUB_USERNAME }}/gateway:latest
+          kubectl rollout status deployment/gateway
