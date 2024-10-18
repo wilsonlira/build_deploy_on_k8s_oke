@@ -34,15 +34,35 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
-      - name: Generate unique version (timestamp-based)
+      - name: Generate version with semver logic
         id: version
         run: |
-          # Gera um timestamp para a tag
-          TIMESTAMP=$(date +'%Y%m%d%H%M%S')
-          echo "Generated version: $TIMESTAMP"
-          echo "VERSION=${TIMESTAMP}" >> $GITHUB_ENV
+          # Se o arquivo VERSION não existir, cria com a versão inicial
+          if [ ! -f VERSION ]; then
+            echo "0.1.0" > VERSION
+          fi
 
-      - name: Build and push Docker image with unique version and latest
+          # Lê a versão atual e separa os números
+          VERSION=$(cat VERSION)
+          IFS='.' read -r major minor patch <<< "$VERSION"
+          
+          # Incrementa o patch automaticamente
+          patch=$((patch + 1))
+          NEW_VERSION="$major.$minor.$patch"
+          
+          echo "New version: $NEW_VERSION"
+          echo "$NEW_VERSION" > VERSION
+          echo "VERSION=${NEW_VERSION}" >> $GITHUB_ENV
+
+      - name: Commit new version
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add VERSION
+          git commit -m "Bump version to ${{ env.VERSION }}" || echo "No changes to commit"
+          git push origin main --force
+
+      - name: Build and push Docker image with semantic versioning
         run: |
           docker buildx create --use
           docker buildx build --platform linux/amd64,linux/arm64 \
