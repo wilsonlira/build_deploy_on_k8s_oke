@@ -32,6 +32,10 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
+      - name: Set version
+        id: vars
+        run: echo "VERSION=$(cat VERSION)" >> $GITHUB_ENV
+
       - name: Build and push Docker image with semantic versioning
         run: |
           docker buildx create --use
