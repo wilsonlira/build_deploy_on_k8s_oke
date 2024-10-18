@@ -1,0 +1,26 @@
+name: Deploy to OKE
+
+on:
+  workflow_run:
+    workflows: ["Build and Push Docker Images"]
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: OCI_Secrets
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Kubectl
+        uses: oracle-actions/configure-kubectl-oke@v1.5.0
+        with:
+          cluster: ${{ secrets.OKE_CLUSTER_OCID }}
+
+      - name: Deploy to OKE
+        run: |
+          kubectl set image deployment/pagamentos pagamentos=${{ secrets.DOCKER_HUB_USERNAME }}/pagamentos:latest
+          kubectl rollout status deployment/pagamentos
