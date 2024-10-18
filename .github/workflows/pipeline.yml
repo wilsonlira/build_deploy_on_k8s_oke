@@ -65,6 +65,21 @@ jobs:
             -t ${{ secrets.DOCKER_HUB_USERNAME }}/gateway:latest \
             --push gateway/
 
+      - name: Install Snyk CLI
+        run: |
+          npm install -g snyk
+
+      - name: Authenticate Snyk
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk auth $SNYK_TOKEN
+
+      - name: Scan Docker image for vulnerabilities using Snyk
+        run: |
+          snyk container test ${{ secrets.DOCKER_HUB_USERNAME }}/gateway:${{ env.VERSION }} --all-projects
+
+
+
 
 #jobs:
   install-kubectl:
