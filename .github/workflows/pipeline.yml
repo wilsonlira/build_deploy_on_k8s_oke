@@ -46,6 +46,40 @@ jobs:
 
       - name: Commit new version
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          g
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git add pagamentos/VERSION
+          git commit -m "Bump version to v${{ env.VERSION }}" || echo "No changes to commit"
+          git push origin main --force
+
+      - name: Build and push Docker image
+        run: |
+          docker buildx create --use
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            -t ${{ secrets.DOCKER_HUB_USERNAME }}/pagamentos:${{ env.VERSION }} \
+            -t ${{ secrets.DOCKER_HUB_USERNAME }}/pagamentos:latest \
+            --push pagamentos/
+
+      - name: Install Snyk CLI
+        run: |
+          npm install -g snyk
+
+      - name: Authenticate Snyk
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk auth $SNYK_TOKEN
+
+      - name: Scan Docker image for vulnerabilities using Snyk
+        run: |
+          snyk container test ${{ secrets.DOCKER_HUB_USERNAME }}/pagamentos:${{ env.VERSION }} || true
+
+  install-kubectl:
+    environment: OCI_Secrets
+    runs-on: ubuntu-latest
+    name: Install Kubectl for OKE
+    env:
+      OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
+      OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
+      OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
+      OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
+      
