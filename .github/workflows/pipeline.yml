@@ -32,12 +32,33 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
-      - name: Set version
-        id: vars
-        run: echo "VERSION=$(cat VERSION)" >> $GITHUB_ENV
+      - name: Get current version
+        id: get_version
+        run: |
+          # Se o arquivo VERSION não existir, cria com a versão inicial
+          if [ ! -f VERSION ]; then
+            echo "1.0.0" > VERSION
+          fi
+          # Lê a versão atual
+          CURRENT_VERSION=$(cat VERSION)
+          echo "Current version: $CURRENT_VERSION"
+
+          # Incrementa a versão (por exemplo, para patch)
+          IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
+          patch=$((patch + 1))  # Incrementa o patch
+          NEW_VERSION="$major.$minor.$patch"
+          echo "New version: $NEW_VERSION"
+
+          # Salva a nova versão no arquivo VERSION
+          echo "$NEW_VERSION" > VERSION
+          echo "VERSION=${NEW_VERSION}" >> $GITHUB_ENV
 
       - name: Build and push Docker image with semantic versioning
         run: |
+          if [ -z "${{ env.VERSION }}" ]; then
+            echo "VERSION not found, exiting."
+            exit 1
+          fi
           docker buildx create --use
           docker buildx build --platform linux/amd64,linux/arm64 \
             -t ${{ secrets.DOCKER_HUB_USERNAME }}/gateway:${{ env.VERSION }} \
