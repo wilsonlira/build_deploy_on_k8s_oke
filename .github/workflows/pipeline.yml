@@ -1,16 +1,16 @@
-name: Build and Push Docker Image for Pagamentos Application
+name: Build and Push Docker Images
 
 on:
   pull_request:
     branches:
       - main
     paths:
-      - 'pagamentos/**'
+      - 'gateway/**'
   push:
     branches:
       - main
     paths:
-      - 'pagamentos/**'
+      - 'gateway/**'
   workflow_dispatch:
 
 permissions:
@@ -25,40 +25,51 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
-      - name: Get current version
-        id: get_version
+      - name: Generate version for gateway with semver logic
+        id: version_gateway
         run: |
+          cd gateway
           # Se o arquivo VERSION não existir, cria com a versão inicial
-          if [ ! -f pagamentos/VERSION ]; then
-            echo "1" > pagamentos/VERSION
+          if [ ! -f VERSION ]; then
+            echo "0.1.0" > VERSION
           fi
-          # Lê a versão atual e incrementa
-          VERSION=$(cat pagamentos/VERSION)
-          NEW_VERSION=$((VERSION + 1))
-          echo "$NEW_VERSION" > pagamentos/VERSION
-          echo "VERSION=v${NEW_VERSION}" >> $GITHUB_ENV
+          # Lê a versão atual e separa os números
+          VERSION=$(cat VERSION)
+          IFS='.' read -r major minor patch <<< "$VERSION"
+          
+          # Incrementa o patch automaticamente
+          patch=$((patch + 1))
+          NEW_VERSION="$major.$minor.$patch"
+          
+          echo "New version for gateway: $NEW_VERSION"
+          echo "$NEW_VERSION" > VERSION
+          echo "GATEWAY_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
 
-      - name: Commit new version
+      - name: Commit new version for gateway
         run: |
-          git config --global user.email "action@github.com"
-          git config --global user.name "GitHub Action"
-          git add pagamentos/VERSION
-          git commit -m "Bump version to v${{ env.VERSION }}" || echo "No changes to commit"
+          cd gateway
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add VERSION
+          git commit -m "Bump gateway version to ${{ env.GATEWAY_VERSION }}" || echo "No changes to commit"
           git push origin main --force
 
-      - name: Build and push Docker image
+      - name: Build and push Docker image for gateway
         run: |
           docker buildx create --use
           docker buildx build --platform linux/amd64,linux/arm64 \
-            -t ${{ secrets.DOCKER_HUB_USERNAME }}/pagamentos:${{ env.VERSION }} \
-            -t ${{ secrets.DOCKER_HUB_USERNAME }}/pagamentos:latest \
-            --push pagamentos/
+            -t ${{ secrets.DOCKER_HUB_USERNAME }}/gateway:${{ env.GATEWAY_VERSION }} \
+            -t ${{ secrets.DOCKER_HUB_USERNAME }}/gateway:latest \
+            --push gateway/
 
       - name: Install Snyk CLI
         run: |
@@ -69,9 +80,9 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: snyk auth $SNYK_TOKEN
 
-      - name: Scan Docker image for vulnerabilities using Snyk
+      - name: Scan Docker image for vulnerabilities using Snyk for gateway
         run: |
-          snyk container test ${{ secrets.DOCKER_HUB_USERNAME }}/pagamentos:${{ env.VERSION }} || true
+          snyk container test ${{ secrets.DOCKER_HUB_USERNAME }}/gateway:${{ env.GATEWAY_VERSION }} || true
 
   install-kubectl:
     environment: OCI_Secrets
@@ -82,4 +93,14 @@ jobs:
       OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
       OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
       OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
-      
+      OCI_CLI_REGION: "${{ vars.OCI_CLI_REGION }}"
+
+    steps:
+      - name: Configure Kubectl
+        uses: oracle-actions/configure-kubectl-oke@v1.5.0
+        id: test-configure-kubectl-oke-action
+        with:
+          cluster: ${{ secrets.OKE_CLUSTER_OCID }}
+
+      - name: Run Kubectl
+        run: kubectl get nodes -A
