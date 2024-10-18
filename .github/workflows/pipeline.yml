@@ -76,7 +76,7 @@ jobs:
 
       - name: Scan Docker image for vulnerabilities using Snyk
         run: |
-          snyk container test ${{ secrets.DOCKER_HUB_USERNAME }}/gateway:${{ env.VERSION }} --all-projects
+          snyk container test ${{ secrets.DOCKER_HUB_USERNAME }}/gateway:${{ env.VERSION }}
 
 
 
