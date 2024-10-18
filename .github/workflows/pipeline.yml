@@ -5,13 +5,12 @@ on:
     branches:
       - main
     paths:
-      - 'pateway/**' 
+      - 'gateway/**' 
   push:
     branches:
       - main
     paths:
-      - 'gateway/**'  # Monitora mudanças na pasta da aplicação1
-      # - 'aplicação2/**'  # Descomente e adicione para outras aplicações
+      - 'gateway/**'
   workflow_dispatch:
 
 jobs:
@@ -43,7 +42,7 @@ jobs:
           CURRENT_VERSION=$(cat VERSION)
           echo "Current version: $CURRENT_VERSION"
 
-          # Incrementa a versão (por exemplo, para patch)
+          # Incrementa a versão (incremento de patch)
           IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
           patch=$((patch + 1))  # Incrementa o patch
           NEW_VERSION="$major.$minor.$patch"
@@ -59,6 +58,7 @@ jobs:
             echo "VERSION not found, exiting."
             exit 1
           fi
+          # Build and push both the versioned tag and latest tag
           docker buildx create --use
           docker buildx build --platform linux/amd64,linux/arm64 \
             -t ${{ secrets.DOCKER_HUB_USERNAME }}/gateway:${{ env.VERSION }} \
@@ -77,28 +77,3 @@ jobs:
       - name: Scan Docker image for vulnerabilities using Snyk
         run: |
           snyk container test ${{ secrets.DOCKER_HUB_USERNAME }}/gateway:${{ env.VERSION }} || true
-
-
-
-
-#jobs:
-  install-kubectl:
-    environment: OCI_Secrets
-    runs-on: ubuntu-latest
-    name: Install Kubectl for OKE
-    env:
-      OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
-      OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
-      OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
-      OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
-      OCI_CLI_REGION: "${{ vars.OCI_CLI_REGION }}" #"sa-saopaulo-1"
-
-    steps:
-      - name: Configure Kubectl
-        uses: oracle-actions/configure-kubectl-oke@v1.5.0
-        id: test-configure-kubectl-oke-action
-        with:
-          cluster: ${{ secrets.OKE_CLUSTER_OCID }}
-
-      - name: Run Kubectl
-        run: kubectl get nodes -A
