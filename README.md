@@ -1,96 +1,53 @@
-# Configure `kubectl` for Oracle Container Engine for Kubernetes
+# Repositório - CI/CD com Docker e Deploy no Oracle Kubernetes Engine (OKE)
 
-Use this GitHub Action to install and configure `kubectl` to connect to the specified [Oracle Container Engine for Kubernetes][1] (OKE) cluster.
+Este repositório contém pipelines automatizadas para a construção, versionamento e deploy de imagens Docker no Oracle Kubernetes Engine (OKE). Abaixo estão descritos os principais workflows e instruções para o funcionamento das pipelines.
 
-## Prerequisites
+## Estrutura das Pipelines
 
-The target OKE cluster must have a **public Kubernetes API Endpoint** in order for a standard GitHub Action workflow to successfully connect to the cluster. To access an OKE cluster with a private Kubernetes API endpoint, you must deploy a [self-hosted GitHub Runner][6] to an Oracle Cloud Infrastructure (OCI) compute instance on the same private subnet as that endpoint.
+### 1. **Pipeline de Build e Push de Imagem Docker**
+Este workflow é responsável por versionar automaticamente, construir e publicar as imagens Docker do serviço `pagamentos`.
 
-The following [OCI CLI environment variables][2] must be defined for the workflow:
+- **Disparo:**
+  - Ao abrir um pull request ou push na branch `main` que contenha alterações na pasta `pagamentos/`.
+  - Manualmente via `workflow_dispatch`.
 
-* `OCI_CLI_USER`
-* `OCI_CLI_TENANCY`
-* `OCI_CLI_FINGERPRINT`
-* `OCI_CLI_KEY_CONTENT`
-* `OCI_CLI_REGION`
+- **Etapas Principais:**
+  1. **Checkout do Código**: Faz o checkout do repositório para garantir que o código esteja disponível na pipeline.
+  2. **Configuração do Buildx**: Configura o Docker Buildx para permitir builds multiplataforma.
+  3. **Login no Docker Hub**: Autentica no Docker Hub usando as credenciais configuradas nos secrets.
+  4. **Versionamento Semântico**: Gera uma nova versão baseada no último patch, incrementando automaticamente.
+  5. **Commit da Nova Versão**: Atualiza o arquivo `VERSION` no repositório e comita a nova versão.
+  6. **Build e Push da Imagem**: Constrói e envia a imagem Docker para o Docker Hub com as tags de versão e `latest`.
+  7. **Scan de Vulnerabilidades**: Utiliza o Snyk para escanear a imagem Docker em busca de vulnerabilidades.
 
-We recommend using GitHub Secrets to store these values. [Defining your environment variables][3] at the job or workflow level would allow multiple tasks/jobs to reduce duplication.
+### 2. **Pipeline de Deploy no OKE**
+Este workflow realiza o deploy da aplicação `pagamentos` no cluster Oracle Kubernetes Engine (OKE).
 
-## Inputs
+- **Disparo:**
+  - Automático após a conclusão bem-sucedida da pipeline de build e push de imagem Docker.
 
-* `cluster`: (Required) The OCID of the OKE cluster to configure
-* `enablePrivateEndpoint`: (Optional) set this to 'true' if you need to connect to a private Kubernetes API endpoint. Requires a self-hosted GitHub Runner deployed to an instance on the same private subnet. Default: false
+- **Etapas Principais:**
+  1. **Checkout do Código**: Faz o checkout do repositório para garantir que a configuração necessária esteja disponível.
+  2. **Configuração do Kubectl**: Autentica no OKE e configura o `kubectl` para operar com o cluster.
+  3. **Deploy**: Atualiza a imagem da aplicação no cluster Kubernetes com a versão `latest` e verifica o status do rollout.
 
-## Sample workflow steps
+## Secrets e Variáveis
 
-The following sample workflow configures `kubectl` for the `OKE_CLUSTER_OCID` OKE cluster using **public** API Endpoint.
+As pipelines utilizam **secrets** e **variáveis de ambiente** para garantir a segurança e flexibilidade:
 
-```yaml
-jobs:
-  install-kubectl:
-    runs-on: ubuntu-latest
-    name: Install Kubectl for OKE
-    env:
-      OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
-      OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
-      OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
-      OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
-      OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }}
+- **DOCKER_HUB_USERNAME**: Nome de usuário do Docker Hub.
+- **DOCKER_HUB_PASSWORD**: Senha do Docker Hub.
+- **OCI_CLI_USER**: ID do usuário OCI para autenticação.
+- **OCI_CLI_TENANCY**: Tenancy OCID no Oracle Cloud.
+- **OCI_CLI_FINGERPRINT**: Impressão digital da chave OCI.
+- **OCI_CLI_KEY_CONTENT**: Conteúdo da chave privada OCI.
+- **OKE_CLUSTER_OCID**: OCID do cluster no Oracle Kubernetes Engine.
+- **SNYK_TOKEN**: Token para autenticação no Snyk para scans de vulnerabilidades.
 
-    steps:
-      - name: Configure Kubectl
-        uses: oracle-actions/configure-kubectl-oke@v1.3.2
-        id: test-configure-kubectl-oke-action
-        with:
-          cluster: ${{ secrets.OKE_CLUSTER_OCID }}
+## Como Executar as Pipelines
 
-      - name: Run Kubectl
-        run: kubectl get nodes -A
-```
+### Build e Push
+A pipeline de build e push é automaticamente acionada ao realizar um push ou pull request na branch `main` com alterações na pasta `pagamentos/`. Ela também pode ser executada manualmente pelo `workflow_dispatch` na interface do GitHub Actions.
 
-The following sample workflow configures `kubectl` for the `OKE_CLUSTER_OCID` OKE cluster using **private** API Endpoint by adding `runs-on: self-hosted` to ensure this action runs on your self-hosted GitHub Runner. It also sets `enablePrivateEndpoint` to `true` to ensure the `kubeconfig` file contains the correct Kubernetes API information.
-
-```yaml
-jobs:
-  install-kubectl:
-    runs-on: self-hosted
-    name: Install Kubectl for OKE
-    env:
-      OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
-      OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
-      OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
-      OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
-      OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }}
-
-    steps:
-      - name: Configure Kubectl
-        uses: oracle-actions/configure-kubectl-oke@v1.3.2
-        id: test-configure-kubectl-oke-action
-        with:
-          cluster: ${{ secrets.OKE_CLUSTER_OCID }}
-          enablePrivateEndpoint: true
-
-      - name: Run Kubectl
-        run: kubectl get nodes -A
-```
-
-## Contributing
-
-We welcome contributions from the community. Before submitting a pull request, please [review our contribution guide][4].
-
-## Security
-
-Please consult the [security guide][5] for our responsible security vulnerability disclosure process.
-
-## License
-
-Copyright (c) 2021, 2023, Oracle and/or its affiliates.
-
-Released under the Universal Permissive License v1.0 as shown at <https://oss.oracle.com/licenses/upl/>.
-
-[1]: https://www.oracle.com/cloud-native/container-engine-kubernetes/
-[2]: https://docs.oracle.com/en-us/iaas/Content/API/SDKDocs/clienvironmentvariables.htm
-[3]: https://docs.github.com/en/actions/learn-github-actions/environment-variables
-[4]:  /CONTRIBUTING.md
-[5]:  ./SECURITY.md
-[6]: https://docs.github.com/en/actions/hosting-your-own-runners
+### Deploy no OKE
+A pipeline de deploy é automaticamente disparada após o sucesso da pipeline de build e push, garantindo que a imagem Docker mais recente seja implantada no cluster Kubernetes.
