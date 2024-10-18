@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'gateway/**' 
+      - 'gateway/**'
   push:
     branches:
       - main
@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # Garante que o pipeline tenha permissão de escrita no repositório
+  contents: write  # Garante permissão de escrita no repositório
 
 jobs:
   build:
@@ -34,36 +34,15 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
-      - name: Get current version
+      - name: Get version from git tag
         id: get_version
         run: |
-          # Se o arquivo VERSION não existir, cria com a versão inicial
-          if [ ! -f VERSION ]; then
-            echo "1.0.0" > VERSION
-          fi
-          # Lê a versão atual
-          CURRENT_VERSION=$(cat VERSION)
-          echo "Current version: $CURRENT_VERSION"
+          # Usa o último tag semântico ou define uma versão inicial
+          VERSION=$(git describe --tags --abbrev=0 || echo "1.0.0")
+          echo "Current version: $VERSION"
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
-          # Incrementa a versão (por exemplo, para patch)
-          IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
-          patch=$((patch + 1))  # Incrementa o patch
-          NEW_VERSION="$major.$minor.$patch"
-          echo "New version: $NEW_VERSION"
-
-          # Salva a nova versão no arquivo VERSION
-          echo "$NEW_VERSION" > VERSION
-          echo "VERSION=${NEW_VERSION}" >> $GITHUB_ENV
-
-      - name: Commit new version
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add VERSION
-          git commit -m "Bump version to ${{ env.VERSION }}" || echo "No changes to commit"
-          git push origin main --force
-
-      - name: Build and push Docker image with semantic versioning
+      - name: Build and push Docker image with version
         run: |
           if [ -z "${{ env.VERSION }}" ]; then
             echo "VERSION not found, exiting."
@@ -97,7 +76,7 @@ jobs:
       OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
       OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
       OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
-      OCI_CLI_REGION: "${{ vars.OCI_CLI_REGION }}" #"sa-saopaulo-1"
+      OCI_CLI_REGION: "${{ vars.OCI_CLI_REGION }}" 
 
     steps:
       - name: Configure Kubectl
