@@ -1,4 +1,4 @@
-# Repositório - CI/CD com Docker e Deploy no Oracle Kubernetes Engine (OKE)
+# CI/CD com Docker e Deploy no Oracle Kubernetes Engine (OKE)
 
 Este repositório contém pipelines automatizadas para a construção, versionamento e deploy de imagens Docker no Oracle Kubernetes Engine (OKE). Abaixo estão descritos os principais workflows e instruções para o funcionamento das pipelines.
 
